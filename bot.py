@@ -58,8 +58,7 @@ bot_app.add_handler(MessageHandler(filters.ALL, debug_chat_id))  # debug 所有�
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    loop = asyncio.get_event_loop()
-    asyncio.run_coroutine_threadsafe(bot_app.update_queue.put(update), loop)
+    bot_app.update_queue.put_nowait(update)
     return "ok"
 
 # 伺服器主程式
