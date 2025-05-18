@@ -1,4 +1,5 @@
 import os
+import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (
@@ -9,23 +10,20 @@ from telegram.ext import (
     filters,
 )
 
-# 環境變數
 TOKEN = os.getenv("TOKEN")
-GROUP_ID = int(os.getenv("GROUP_ID", 0))  # 必須是整數
+GROUP_ID = int(os.getenv("GROUP_ID", 0))  # 這裡要填整數
 WELCOME_MESSAGE = "👋 各位蒞臨潤匯港的貴賓你好！\n有任何匯率相關的問題，請私訊我，我會盡快為您服務！"
 
-# 啟動 Flask 與 Telegram Bot
 app = Flask(__name__)
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
-# 暫存對應表：私訊者對應的 message_id
-user_to_message = {}
+user_to_message = {}  # 儲存私訊用戶與其轉發訊息的對應
 
-# /start 指令回覆歡迎訊息
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(WELCOME_MESSAGE)
 
-# 處理來自用戶的私訊並轉發到群組
+
 async def forward_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type == "private":
         sent_msg = await context.bot.send_message(
@@ -34,7 +32,7 @@ async def forward_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         user_to_message[sent_msg.message_id] = update.message.chat_id
 
-# 處理來自群組的回覆並轉發給原用戶
+
 async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if (
         update.message.chat_id == GROUP_ID
@@ -47,27 +45,33 @@ async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=f"潤匯港客服回覆 : {update.message.text}",
         )
 
-# 額外 debug：打印所有訊息 chat_id
-async def debug_print_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+# ✅ debug 輸出 chat_id（幫助找群組 ID）
+async def debug_log(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[DEBUG] chat_id: {update.message.chat_id}, user: {update.effective_user.full_name}, text: {update.message.text}")
 
-# 註冊處理器
+
+# 加入處理器
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, forward_to_group))
 bot_app.add_handler(MessageHandler(filters.TEXT & filters.Chat(GROUP_ID), reply_to_user))
-bot_app.add_handler(MessageHandler(filters.ALL, debug_print_chat_id))
+bot_app.add_handler(MessageHandler(filters.ALL, debug_log))  # 記錄所有訊息
 
-# Webhook 路由處理（同步，不用 asyncio.create_task）
+
+# Webhook 接收端
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    bot_app.update_queue.put_nowait(update)
+
+    async def handle_update():
+        await bot_app.update_queue.put(update)
+
+    asyncio.get_event_loop().create_task(handle_update())
     return "ok"
 
-# 執行主程式
-if __name__ == "__main__":
-    import asyncio
 
+# Flask 啟動伺服器
+if __name__ == "__main__":
     async def run():
         await bot_app.initialize()
         await bot_app.start()
@@ -75,6 +79,7 @@ if __name__ == "__main__":
         app.run(host="0.0.0.0", port=port)
 
     asyncio.run(run())
+
 
 
 
