@@ -50,6 +50,13 @@ bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, forward_to_group))
 bot_app.add_handler(MessageHandler(filters.TEXT & filters.Chat(GROUP_ID), reply_to_user))
 
+# ✅ 👉 暫時新增這段 debug 用的 chat_id 輸出
+async def debug_print_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f"[DEBUG] chat_id: {update.message.chat_id}, user: {update.effective_user.full_name}, text: {update.message.text}")
+
+bot_app.add_handler(MessageHandler(filters.ALL, debug_print_chat_id))
+
+
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
