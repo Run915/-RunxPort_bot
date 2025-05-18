@@ -61,8 +61,8 @@ bot_app.add_handler(MessageHandler(filters.ALL, debug_print_chat_id))
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    import asyncio
-    asyncio.create_task(bot_app.update_queue.put(update))
+    loop = asyncio.get_event_loop()
+    asyncio.run_coroutine_threadsafe(bot_app.update_queue.put(update), loop)
     return "ok"
 
 
