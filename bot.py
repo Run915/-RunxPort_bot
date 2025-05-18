@@ -54,8 +54,10 @@ bot_app.add_handler(MessageHandler(filters.TEXT & filters.Chat(GROUP_ID), reply_
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    bot_app.update_queue.put(update)
+    import asyncio
+    asyncio.create_task(bot_app.update_queue.put(update))
     return "ok"
+
 
 
 if __name__ == "__main__":
