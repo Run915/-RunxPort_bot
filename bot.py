@@ -57,14 +57,10 @@ bot_app.add_handler(MessageHandler(filters.ALL, debug_chat_id))  # debug 所有�
 # webhook 路由
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    try:
-        data = request.get_json(force=True)
-        update = Update.de_json(data, bot_app.bot)
-        bot_app.update_queue.put_nowait(update)
-        return "ok"
-    except Exception as e:
-        print("[Webhook Error]", e)
-        return "error", 500
+    update = Update.de_json(request.get_json(force=True), bot_app.bot)
+    bot_app.update_queue.put_nowait(update)
+    return "ok"
+
 
 
 # 伺服器主程式
